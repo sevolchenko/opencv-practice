@@ -126,7 +126,9 @@ public class ImageUtils {
                                                 double colorThreshold) {
         List<Double> percentList = List.of(greenPercent, yellowPercent, bluePercent, redPercent);
         double maxVal = percentList.stream().max(Double::compareTo).get();
-        if (maxVal < colorThreshold) {
+        if (maxVal < colorThreshold || percentList.stream()
+                .filter(val -> maxVal - colorThreshold / 2 > val)
+                .count() == 1) {
             return ImageUtils.ObjectColor.UNDEFINED;
         } else {
             int maxIndex = percentList.indexOf(maxVal);

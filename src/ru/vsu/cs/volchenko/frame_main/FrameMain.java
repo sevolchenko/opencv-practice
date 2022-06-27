@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 public class FrameMain extends JFrame {
 
+    private JScrollPane panelMain;
     private JSlider sliderThresholdMin;
     private JSlider sliderThresholdMax;
     private JLabel labelImg;
@@ -28,7 +29,7 @@ public class FrameMain extends JFrame {
     private JLabel labelDescription;
     private JButton buttonSave;
     private JButton buttonExecute;
-    private JScrollPane panelSettings;
+    private JPanel panelSettings;
     private JTextField textFieldSizeX;
     private JTextField textFieldSizeY;
     private JTextField textFieldSigmaX;
@@ -51,7 +52,6 @@ public class FrameMain extends JFrame {
     private JButton buttonHideShowSettings;
     private JSlider sliderColorThreshold;
     private JTextField textFieldValueOfColorThreshold;
-    private JScrollPane panelMain;
 
     private final JFileChooser fileChooserOpen;
     private final JFileChooser fileChooserSave;
