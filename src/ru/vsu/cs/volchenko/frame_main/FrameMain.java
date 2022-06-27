@@ -13,6 +13,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+//todo: scroll panel
+
 public class FrameMain extends JFrame {
 
     private JPanel panelMain;
@@ -45,6 +47,7 @@ public class FrameMain extends JFrame {
     private JLabel labelColor;
     private JButton buttonPrevObject;
     private JButton buttonNextObject;
+    private JButton buttonSaveObject;
 
     private final JFileChooser fileChooserOpen;
     private final JFileChooser fileChooserSave;
@@ -102,6 +105,17 @@ public class FrameMain extends JFrame {
                 if (fileChooserSave.showSaveDialog(panelMain) == JFileChooser.APPROVE_OPTION) {
                     String path = fileChooserSave.getSelectedFile().getPath();
                     ImageIO.write(getCurrentImage(), "jpg", new File(path));
+                }
+            } catch (IOException ex) {
+                SwingUtils.showErrorMessageBox(ex);
+            }
+        });
+
+        buttonSaveObject.addActionListener(e -> {
+            try {
+                if (fileChooserSave.showSaveDialog(panelMain) == JFileChooser.APPROVE_OPTION) {
+                    String path = fileChooserSave.getSelectedFile().getPath();
+                    ImageIO.write(processorContext.listOfColors.get(currentObjectIndex).source, "jpg", new File(path));
                 }
             } catch (IOException ex) {
                 SwingUtils.showErrorMessageBox(ex);

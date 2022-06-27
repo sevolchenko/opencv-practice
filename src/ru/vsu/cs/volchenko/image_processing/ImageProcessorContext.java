@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class ImageProcessorContext {
-
+//todo: calculate count of object with single color
     public enum ImageColor {
         UNDEFINED,
         GREEN,

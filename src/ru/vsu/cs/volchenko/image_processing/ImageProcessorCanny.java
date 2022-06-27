@@ -52,9 +52,7 @@ public class ImageProcessorCanny {
             Imgproc.rectangle(contoursBoundedMat, boundingRect.tl(), boundingRect.br(), new Scalar(0, 0, 255.0), 1);
         }
 
-        for (int i = 0; i < listOfBoundedMat.size(); i++) {
-            Mat boundedMat = listOfBoundedMat.get(i);
-
+        for (Mat boundedMat : listOfBoundedMat) {
             Mat hsvBoundedMat = new Mat();
             Imgproc.cvtColor(boundedMat, hsvBoundedMat, Imgproc.COLOR_BGR2HSV);
 
@@ -62,6 +60,8 @@ public class ImageProcessorCanny {
             boolean isYellow = findColor(hsvBoundedMat, ImageUtils::getHSVYellow);
             boolean isBlue = findColor(hsvBoundedMat, ImageUtils::getHSVBlue);
             boolean isRed = findColor(hsvBoundedMat, ImageUtils::getHSVRed);
+
+            //todo: results masking to context
 
             if (countOfTrue(isGreen, isYellow, isBlue, isRed) != 1) {
                 resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.UNDEFINED));
@@ -105,8 +105,8 @@ public class ImageProcessorCanny {
 
     private int countOfTrue(boolean... args) {
         int count = 0;
-        for (int i = 0; i < args.length; i++) {
-            if (args[i]) {
+        for (boolean arg : args) {
+            if (arg) {
                 count++;
             }
         }
