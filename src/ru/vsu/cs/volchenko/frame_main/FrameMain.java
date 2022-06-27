@@ -65,7 +65,7 @@ public class FrameMain extends JFrame {
 
     public FrameMain() {
 
-        this.setTitle("Application");
+        this.setTitle("ImageProcessor");
         this.setContentPane(panelMain);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
