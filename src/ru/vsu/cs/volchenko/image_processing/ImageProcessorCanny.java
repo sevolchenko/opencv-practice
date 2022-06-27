@@ -7,7 +7,6 @@ import ru.vsu.cs.volchenko.utils.ImageUtils;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 public class ImageProcessorCanny {
 
@@ -17,7 +16,7 @@ public class ImageProcessorCanny {
                                          int kSizeW, int kSizeH, int sigmaX, int sigmaY,
                                          int thresholdMin, int thresholdMax,
                                          int apertureSize, boolean l2Gradient,
-                                         int method) throws Exception {
+                                         int method, int colorThreshold) throws Exception {
 
         ImageProcessorContext resultContext = new ImageProcessorContext();
         resultContext.millisecondsStart = System.currentTimeMillis();
@@ -56,26 +55,26 @@ public class ImageProcessorCanny {
             Mat hsvBoundedMat = new Mat();
             Imgproc.cvtColor(boundedMat, hsvBoundedMat, Imgproc.COLOR_BGR2HSV);
 
-            boolean isGreen = findColor(hsvBoundedMat, ImageUtils::getHSVGreen);
-            boolean isYellow = findColor(hsvBoundedMat, ImageUtils::getHSVYellow);
-            boolean isBlue = findColor(hsvBoundedMat, ImageUtils::getHSVBlue);
-            boolean isRed = findColor(hsvBoundedMat, ImageUtils::getHSVRed);
+            Mat greenFilter = ImageUtils.findColor(hsvBoundedMat, ImageUtils::getHSVGreen);
+            Mat yellowFilter = ImageUtils.findColor(hsvBoundedMat, ImageUtils::getHSVYellow);
+            Mat blueFilter = ImageUtils.findColor(hsvBoundedMat, ImageUtils::getHSVBlue);
+            Mat redFilter = ImageUtils.findColor(hsvBoundedMat, ImageUtils::getHSVRed);
 
-            //todo: results masking to context
+            MatWithMatches greenResult = ImageUtils.paintAndCalcMatches(greenFilter, ImageUtils::getHSVGreen);
+            MatWithMatches yellowResult = ImageUtils.paintAndCalcMatches(yellowFilter, ImageUtils::getHSVYellow);
+            MatWithMatches blueResult = ImageUtils.paintAndCalcMatches(blueFilter, ImageUtils::getHSVBlue);
+            MatWithMatches redResult = ImageUtils.paintAndCalcMatches(redFilter, ImageUtils::getHSVRed);
 
-            if (countOfTrue(isGreen, isYellow, isBlue, isRed) != 1) {
-                resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.UNDEFINED));
-            } else {
-                if (isGreen) {
-                    resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.GREEN));
-                } else if (isYellow) {
-                    resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.YELLOW));
-                } else if (isBlue) {
-                    resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.BLUE));
-                } else if (isRed) {
-                    resultContext.listOfColors.add(new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageProcessorContext.ImageColor.RED));
-                }
-            }
+            double sizeOfBoundedMat = boundedMat.cols() * boundedMat.rows();
+            ImageUtils.ObjectColor resultColor = ImageUtils.analyzeColor(greenResult.countOfMatches / sizeOfBoundedMat,
+                    yellowResult.countOfMatches / sizeOfBoundedMat, blueResult.countOfMatches / sizeOfBoundedMat,
+                    redResult.countOfMatches / sizeOfBoundedMat, colorThreshold / 100.0);
+
+            ImagesWithColor allFilters = new ImagesWithColor(ImageUtils.mat2bi(boundedMat), ImageUtils.mat2bi(greenResult.mat),
+                    ImageUtils.mat2bi(yellowResult.mat), ImageUtils.mat2bi(blueResult.mat), ImageUtils.mat2bi(redResult.mat),
+                    resultColor);
+
+            resultContext.listOfColors.add(allFilters);
         }
 
         resultContext.listOfImages.add(new ImageWithDescription(ImageUtils.mat2bi(grayMat), "Shades of gray"));
@@ -85,32 +84,8 @@ public class ImageProcessorCanny {
         resultContext.listOfImages.add(new ImageWithDescription(ImageUtils.mat2bi(contoursBoundedMat), "Found contours are bounded with red"));
 
         resultContext.millisecondsEnd = System.currentTimeMillis();
+
         return resultContext;
-    }
-
-    private boolean findColor(Mat src, Supplier<Scalar[]> sup) {
-        Mat binaryMat = new Mat(src.size(), src.type());
-        Scalar[] color = sup.get();
-        Core.inRange(src, color[0], color[1], binaryMat);
-        int match = 0;
-        for (int row = 0; row < binaryMat.rows(); row++) {
-            for (int col = 0; col < binaryMat.cols(); col++) {
-                if (binaryMat.get(row, col)[0] != 0.0) {
-                    match++;
-                }
-            }
-        }
-        return (binaryMat.rows() * binaryMat.cols() * 0.3 < match); //todo
-    }
-
-    private int countOfTrue(boolean... args) {
-        int count = 0;
-        for (boolean arg : args) {
-            if (arg) {
-                count++;
-            }
-        }
-        return count;
     }
 
 }

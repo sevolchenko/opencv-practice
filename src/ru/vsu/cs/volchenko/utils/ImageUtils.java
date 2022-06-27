@@ -1,11 +1,9 @@
 package ru.vsu.cs.volchenko.utils;
 
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.core.Scalar;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import ru.vsu.cs.volchenko.image_processing.MatWithMatches;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -13,57 +11,57 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public class ImageUtils {
 
     private ImageUtils() {}
 
+    public enum ObjectColor {
+        UNDEFINED,
+        GREEN,
+        YELLOW,
+        BLUE,
+        RED;
+
+        @Override
+        public String toString() {
+            return name().charAt(0) + name().substring(1).toLowerCase(Locale.ROOT);
+        }
+    }
 
     public static Scalar[] getHSVGreen() { /*https://russianblogs.com/article/41781040604/*/
-        Scalar[] res = new Scalar[2];
+        Scalar[] res = new Scalar[3];
         res[0] = new Scalar(36, 202, 59);
         res[1] = new Scalar(71, 255, 255);
+        res[2] = new Scalar(0, 255, 0);
         return res;
     }
 
     public static Scalar[] getHSVYellow() {
-        Scalar[] res = new Scalar[2];
+        Scalar[] res = new Scalar[3];
         res[0] = new Scalar(18, 0, 196);
         res[1] = new Scalar(36, 255, 255);
+        res[2] = new Scalar(255, 255, 0);
         return res;
     }
 
     public static Scalar[] getHSVBlue() {
-        Scalar[] res = new Scalar[2];
+        Scalar[] res = new Scalar[3];
         res[0] = new Scalar(89, 0, 0);
         res[1] = new Scalar(125, 255, 255);
+        res[2] = new Scalar(0, 0, 255);
         return res;
     }
 
     public static Scalar[] getHSVRed() {
-        Scalar[] res = new Scalar[2];
+        Scalar[] res = new Scalar[3];
         res[0] = new Scalar(0, 100, 80);
         res[1] = new Scalar(10, 255, 255);
+        res[2] = new Scalar(255, 0, 0);
         return res;
-    }
-
-    public static Mat drawColor(Mat sourceMat, Supplier<Scalar[]> supplier) {
-        Scalar[] color = supplier.get();
-        /*double[] averageColor = {(color[0].val[0] + color[1].val[0]) / 2,
-                (color[0].val[1] + color[1].val[1]) / 2,
-                (color[0].val[2] + color[1].val[2]) / 2};*/
-        double[] averageColor = {color[1].val[0], color[1].val[1], color[1].val[2]};
-        double[] black = {0, 0, 0};
-        Mat result = new Mat(sourceMat.size(), CvType.CV_8UC3);
-        for (int row = 0; row < sourceMat.rows(); row++) {
-            for (int col = 0; col < sourceMat.cols(); col++) {
-                double val = sourceMat.get(row, col)[0];
-                result.put(row, col, val != 0 ? averageColor : black);
-            }
-        }
-        Imgproc.cvtColor(result, result, Imgproc.COLOR_HSV2BGR);
-        return result;
     }
 
     public static BufferedImage readBI(String path) throws IOException {
@@ -95,6 +93,45 @@ public class ImageUtils {
             System.exit(2);
         }
         return result;
+    }
+
+    public static Mat findColor(Mat src, Supplier<Scalar[]> sup) {
+        Mat binaryMat = new Mat(src.size(), src.type());
+        Scalar[] color = sup.get();
+        Core.inRange(src, color[0], color[1], binaryMat);
+        return binaryMat;
+    }
+
+    public static MatWithMatches paintAndCalcMatches(Mat maskedMat, Supplier<Scalar[]> sup) {
+        Mat coloredMat = new Mat(maskedMat.size(), CvType.CV_8UC3);
+        int countOfMatches = 0;
+        Scalar[] color = sup.get();
+        double[] fillingColor = {color[2].val[0], color[2].val[1], color[2].val[2]};
+        double[] black = {0, 0, 0};
+        for (int row = 0; row < maskedMat.rows(); row++) {
+            for (int col = 0; col < maskedMat.cols(); col++) {
+                double val = maskedMat.get(row, col)[0];
+                if (val != 0) {
+                    countOfMatches++;
+                }
+                coloredMat.put(row, col, val != 0 ? fillingColor : black);
+            }
+        }
+        Imgproc.cvtColor(coloredMat, coloredMat, Imgproc.COLOR_RGB2BGR);
+        return new MatWithMatches(coloredMat, countOfMatches);
+    }
+
+    public static ImageUtils.ObjectColor analyzeColor(double greenPercent, double yellowPercent,
+                                                double bluePercent, double redPercent,
+                                                double colorThreshold) {
+        List<Double> percentList = List.of(greenPercent, yellowPercent, bluePercent, redPercent);
+        double maxVal = percentList.stream().max(Double::compareTo).get();
+        if (maxVal < colorThreshold) {
+            return ImageUtils.ObjectColor.UNDEFINED;
+        } else {
+            int maxIndex = percentList.indexOf(maxVal);
+            return ImageUtils.ObjectColor.values()[maxIndex + 1];
+        }
     }
 
 }

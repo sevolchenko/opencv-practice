@@ -12,12 +12,12 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-
-//todo: scroll panel
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FrameMain extends JFrame {
 
-    private JPanel panelMain;
     private JSlider sliderThresholdMin;
     private JSlider sliderThresholdMax;
     private JLabel labelImg;
@@ -28,7 +28,7 @@ public class FrameMain extends JFrame {
     private JLabel labelDescription;
     private JButton buttonSave;
     private JButton buttonExecute;
-    private JPanel panelSettings;
+    private JScrollPane panelSettings;
     private JTextField textFieldSizeX;
     private JTextField textFieldSizeY;
     private JTextField textFieldSigmaX;
@@ -48,13 +48,17 @@ public class FrameMain extends JFrame {
     private JButton buttonPrevObject;
     private JButton buttonNextObject;
     private JButton buttonSaveObject;
+    private JButton buttonHideShowSettings;
+    private JSlider sliderColorThreshold;
+    private JTextField textFieldValueOfColorThreshold;
+    private JScrollPane panelMain;
 
     private final JFileChooser fileChooserOpen;
     private final JFileChooser fileChooserSave;
 
     BufferedImage sourceImage = null;
 
-    ImageProcessorCanny imageProcessor = null;
+    ImageProcessorCanny imageProcessor;
     Integer currentImageIndex = null;
     Integer currentObjectIndex = null;
     ImageProcessorContext processorContext = null;
@@ -78,10 +82,12 @@ public class FrameMain extends JFrame {
         fileChooserSave.setApproveButtonText("Save");
 
         comboBoxMethod.setSelectedIndex(3);
+        panelSettings.setVisible(false);
 
         imageProcessor = new ImageProcessorCanny();
 
         updateView();
+        this.pack();
         this.setLocationRelativeTo(null);
 
         buttonUpload.addActionListener(e -> {
@@ -91,8 +97,10 @@ public class FrameMain extends JFrame {
                     currentImageIndex = null;
                     currentObjectIndex = null;
                     processorContext = null;
+                    panelSettings.setVisible(true);
 
                     updateView();
+                    this.pack();
                     this.setLocationRelativeTo(null);
                 }
             } catch (IOException ex) {
@@ -120,6 +128,12 @@ public class FrameMain extends JFrame {
             } catch (IOException ex) {
                 SwingUtils.showErrorMessageBox(ex);
             }
+        });
+
+        buttonHideShowSettings.addActionListener(e -> {
+            panelSettings.setVisible(!panelSettings.isVisible());
+
+            updateView();
         });
 
         buttonNext.addActionListener(e -> {
@@ -175,20 +189,37 @@ public class FrameMain extends JFrame {
 
                 int method = comboBoxMethod.getSelectedIndex() + 1;
 
+                int colorThreshold = sliderColorThreshold.getValue();
+
                 processorContext = imageProcessor.process(sourceImage,
                         kSizeW, kSizeH, sigmaX, sigmaY,
                         thresholdMin, thresholdMax,
                         apertureSize, l2Gradient,
-                        method);
+                        method, colorThreshold);
+
+                Map<ImageUtils.ObjectColor, Integer> mapOfCounts = Arrays.stream(ImageUtils.ObjectColor.values())
+                        .collect(Collectors.toMap(objectColor -> objectColor,
+                                objectColor -> Long.valueOf(processorContext.listOfColors.stream()
+                                .filter(imagesWithColor -> imagesWithColor.color == objectColor)
+                                .count())
+                                        .intValue()));
+
+                String colorInformation = "Colors detected:" +
+                        mapOfCounts.entrySet().stream()
+                                .sorted((entry1, entry2) -> entry2.getValue() - entry1.getValue())
+                                .map(entry -> "\n" + entry.getKey().toString() + ": " + entry.getValue())
+                                .collect(Collectors.joining());
+
+
+                SwingUtils.showInfoMessageBox("Execution time: " + processorContext.getPassedTime() + " millis" +
+                        "\nContours detected: " + processorContext.listOfColors.size() +
+                        "\n\n" + colorInformation + "\n", "Execution finished");
 
                 if (currentImageIndex == null) {
                     currentImageIndex = -1;
                 }
 
                 currentObjectIndex = 0;
-
-                SwingUtils.showInfoMessageBox("Execution time: " + processorContext.getPassedTime() + " millis\n" +
-                        "Contours detected: " + processorContext.listOfColors.size(), "Execution finished");
 
                 updateView();
                 this.setLocationRelativeTo(null);
@@ -198,13 +229,11 @@ public class FrameMain extends JFrame {
 
         });
 
-        sliderThresholdMin.addChangeListener(e -> {
-            updateView();
-        });
+        sliderThresholdMin.addChangeListener(e -> updateView());
 
-        sliderThresholdMax.addChangeListener(e -> {
-            updateView();
-        });
+        sliderThresholdMax.addChangeListener(e -> updateView());
+
+        sliderColorThreshold.addChangeListener(e -> updateView());
 
         textFieldValueOfThresholdMin.addActionListener(e -> {
             sliderThresholdMin.setValue(Integer.parseInt(textFieldValueOfThresholdMin.getText()));
@@ -213,6 +242,11 @@ public class FrameMain extends JFrame {
 
         textFieldValueOfThresholdMax.addActionListener(e -> {
             sliderThresholdMax.setValue(Integer.parseInt(textFieldValueOfThresholdMax.getText()));
+            updateView();
+        });
+
+        textFieldValueOfColorThreshold.addActionListener(e -> {
+            sliderColorThreshold.setValue(Integer.parseInt(textFieldValueOfColorThreshold.getText()));
             updateView();
         });
     }
@@ -252,7 +286,6 @@ public class FrameMain extends JFrame {
 
         boolean currentImageExist = getCurrentImage() != null;
         buttonExecute.setVisible(currentImageExist);
-        panelSettings.setVisible(currentImageExist);
         buttonSave.setVisible(currentImageExist);
 
         if (currentImageExist) {
@@ -261,7 +294,12 @@ public class FrameMain extends JFrame {
 
         textFieldValueOfThresholdMin.setText(String.valueOf(sliderThresholdMin.getValue()));
         textFieldValueOfThresholdMax.setText(String.valueOf(sliderThresholdMax.getValue()));
+        textFieldValueOfColorThreshold.setText(String.valueOf(sliderColorThreshold.getValue()));
 
-        this.pack();
+        if (panelSettings.isVisible()) {
+            buttonHideShowSettings.setText("Hide settings");
+        } else {
+            buttonHideShowSettings.setText("Show settings");
+        }
     }
 }
